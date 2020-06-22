@@ -2,4 +2,7 @@
 just for tests
 
 
-run `node test.js` 
+run `npm test`
+
+or `docker-compose run --rm test bash`
+then `npm test`
