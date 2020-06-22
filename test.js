@@ -11,20 +11,36 @@ const consumer = _.curry(({ func, msg }, data) => _(data)
     .tap(x => console.log(msg, x))
 );
 
-function transformStream (xfn, opts) {
-    const source = new stream.Transform(Object.assign({
+function transformStream (streamFn, opts) {
+    const input = _();
+    const output = streamFn(input);
+    let subscribed = false;
+
+    const xfStream = new stream.Transform(Object.assign({
+        objectMode: true,
         transform (chunk, encoding, callback) {
-            this.push(chunk);
+            // we only want to create this subscription once
+            if (!subscribed) {
+                output
+                  .errors((err, push) => {
+                      // end the highland stream
+                      push(_.nil);
+                      // destroy outer transform stream with error
+                      this.destroy(err);
+                  })
+                  .each(x => this.push(x))
+                subscribed = true;
+            }
+            input.write(chunk);
             callback();
         },
 
         flush (callback) {
-            console.log("Flushing");
-            callback();
+            input.end();
         }
     }, opts))
 
-    return transform;
+    return xfStream;
 }
 
 const main = async () => {
